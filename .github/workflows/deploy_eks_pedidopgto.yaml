@@ -1,0 +1,48 @@
+name: Deploy Pedido e Pagamento EKS
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  deploy-pedidopgto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.1
+
+      - name: Deploy Pedido e Pagamento
+        working-directory: ./pedidopgto
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="cliente_endpoint=${{ secrets.CLIENTE_ENDPOINT }}" \
+            -var="produto_endpoint=${{ secrets.PRODUTO_ENDPOINT }}" \
+            -var="db_username=${{ secrets.DOCDB_USERNAME }}" \
+            -var="db_password=${{ secrets.DOCDB_PASSWORD }}" \
+            -var="db_name=${{ secrets.DOCDB_DBNAME }}" \
+            -var="db_endpoint=${{ secrets.DOCDB_CLUSTER_ENDPOINT_PED }}" \
+            -var="pagseguro_token=${{ secrets.PAGSEGURO_TOKEN }}"
+          
+          echo "Configurando kubectl..."
+          aws eks update-kubeconfig --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
+          
+          echo "Waiting for EKS cluster..."
+          aws eks wait cluster-active --name eks-pedidopgto --region ${{ secrets.AWS_REGION }}
+          
+          echo "Verificando deployment..."
+          kubectl rollout status deployment/microservice-pedidopgto-deployment
