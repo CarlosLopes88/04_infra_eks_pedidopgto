@@ -375,6 +375,6 @@ variable "pagseguro_token" {
 }
 
 output "microservice_pedidopgto_loadbalancer_endpoint" {
-  description = "Endpoint do LoadBalancer para o serviço microservice-pedidopgto"
+  description = "Endpoint do LoadBalancer para o serviço do microservice-pedidopgto"
   value       = kubernetes_service.microservice_pedidopgto.status[0].load_balancer[0].ingress[0].hostname
 }
